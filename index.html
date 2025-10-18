@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpaceCraft - Room Layout Designer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .snap-grid {
+            background-image:
+                linear-gradient(to right, rgba(200, 200, 200, 0.2) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(200, 200, 200, 0.2) 1px, transparent 1px);
+        }
+        #canvas-3d {
+            display: none;
+            width: 100%;
+            height: 100%;
+        }
+        /* Custom modal for confirm dialog */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .texture-btn {
+            border: 2px solid transparent;
+            transition: border-color 0.2s;
+        }
+        .texture-btn.selected {
+            border-color: #4f46e5;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex flex-col md:flex-row h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-full md:w-72 bg-white shadow-lg p-4 flex flex-col space-y-4 overflow-y-auto">
+        <h1 class="text-3xl font-bold text-gray-900">SpaceCraft</h1>
+
+        <div>
+            <h2 class="text-xl font-semibold mb-3 text-gray-800">Furniture</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="furniture-item bg-gray-200 hover:bg-indigo-100 transition-colors h-24 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing flex-col" draggable="true" data-type="sofa" data-width="140" data-height="70" data-color="#4A90E2">
+                    <span class="text-2xl">🛋️</span>
+                    <span class="text-sm font-medium">Sofa</span>
+                </div>
+                <div class="furniture-item bg-gray-200 hover:bg-indigo-100 transition-colors h-24 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing flex-col" draggable="true" data-type="table" data-width="90" data-height="90" data-color="#E97863">
+                    <span class="text-2xl">🍽️</span>
+                    <span class="text-sm font-medium">Table</span>
+                </div>
+                <div class="furniture-item bg-gray-200 hover:bg-indigo-100 transition-colors h-24 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing flex-col" draggable="true" data-type="bed" data-width="100" data-height="190" data-color="#7ED321">
+                    <span class="text-2xl">🛏️</span>
+                    <span class="text-sm font-medium">Bed</span>
+                </div>
+                 <div class="furniture-item bg-gray-200 hover:bg-indigo-100 transition-colors h-24 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing flex-col" draggable="true" data-type="chair" data-width="45" data-height="45" data-color="#F5A623">
+                    <span class="text-2xl">🪑</span>
+                    <span class="text-sm font-medium">Chair</span>
+                </div>
+                <div class="furniture-item bg-gray-200 hover:bg-indigo-100 transition-colors h-24 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing flex-col" draggable="true" data-type="bookshelf" data-width="80" data-height="30" data-color="#8B572A">
+                    <span class="text-2xl">📚</span>
+                    <span class="text-sm font-medium">Bookshelf</span>
+                </div>
+                <div class="furniture-item bg-gray-200 hover:bg-indigo-100 transition-colors h-24 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing flex-col" draggable="true" data-type="lamp" data-width="30" data-height="30" data-color="#F8E71C">
+                    <span class="text-2xl">💡</span>
+                    <span class="text-sm font-medium">Lamp</span>
+                </div>
+                <div class="furniture-item bg-gray-200 hover:bg-indigo-100 transition-colors h-24 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing flex-col" draggable="true" data-type="rug" data-width="180" data-height="120" data-color="#D0021B">
+                    <span class="text-2xl">️️ rug</span>
+                    <span class="text-sm font-medium">Rug</span>
+                </div>
+                <div class="furniture-item bg-gray-200 hover:bg-indigo-100 transition-colors h-24 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing flex-col" draggable="true" data-type="plant" data-width="40" data-height="40" data-color="#228B22">
+                    <span class="text-2xl">🌿</span>
+                    <span class="text-sm font-medium">Plant</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="selection-controls" class="hidden pt-4 border-t">
+             <h2 class="text-xl font-semibold mb-3 text-gray-800">Customize Item</h2>
+             <div>
+                 <label for="item-color-picker" class="block text-sm font-medium text-gray-700">Color</label>
+                 <input type="color" id="item-color-picker" class="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+             </div>
+             <button id="rotate-item" class="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Rotate</button>
+             <button id="delete-item" class="mt-2 w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Delete</button>
+        </div>
+
+        <div class="pt-4 border-t">
+            <h2 class="text-xl font-semibold mb-3 text-gray-800">Room</h2>
+            <div>
+                <label for="wall-color-picker" class="block text-sm font-medium text-gray-700">Wall Color Tint</label>
+                <input type="color" id="wall-color-picker" value="#DFE2E6" class="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm">
+            </div>
+            <div id="wall-textures" class="mt-2">
+                <label class="block text-sm font-medium text-gray-700">Wall Texture</label>
+                <div class="grid grid-cols-3 gap-2 mt-1">
+                    <button class="texture-btn selected p-2 rounded-md bg-gray-200" data-texture="plaster">Plaster</button>
+                    <button class="texture-btn p-2 rounded-md bg-gray-200" data-texture="bricks">Bricks</button>
+                    <button class="texture-btn p-2 rounded-md bg-gray-200" data-texture="wallpaper">Pattern</button>
+                </div>
+            </div>
+            <div class="mt-4">
+                <label for="floor-color-picker" class="block text-sm font-medium text-gray-700">Floor Color Tint</label>
+                <input type="color" id="floor-color-picker" value="#C4A484" class="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm">
+            </div>
+             <div id="floor-textures" class="mt-2">
+                <label class="block text-sm font-medium text-gray-700">Floor Texture</label>
+                <div class="grid grid-cols-3 gap-2 mt-1">
+                    <button class="texture-btn selected p-2 rounded-md bg-gray-200" data-texture="wood">Wood</button>
+                    <button class="texture-btn p-2 rounded-md bg-gray-200" data-texture="tiles">Tiles</button>
+                    <button class="texture-btn p-2 rounded-md bg-gray-200" data-texture="carpet">Carpet</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col">
+        <div class="bg-white shadow-md p-2 flex justify-between items-center z-10">
+             <div class="flex items-center space-x-2">
+                <button id="toggle-view" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">3D View</button>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button id="save-layout" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Save</button>
+                <button id="load-layout" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Load</button>
+                <button id="clear-layout" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Clear</button>
+            </div>
+        </div>
+        <div id="canvas-container" class="flex-1 bg-gray-200 relative overflow-auto">
+            <canvas id="room-canvas"></canvas>
+            <div id="canvas-3d-container" class="absolute top-0 left-0 w-full h-full" style="display: none;"></div>
+        </div>
+    </main>
+    
+    <script>
+        const canvas = document.getElementById('room-canvas');
+        const ctx = canvas.getContext('2d');
+        const canvasContainer = document.getElementById('canvas-container');
+
+        const threeContainer = document.getElementById('canvas-3d-container');
+        let scene, camera, renderer, controls;
+        let roomMeshes = {};
+        let textureLoader;
+
+        let furniture = [];
+        let selectedItem = null;
+        let isDragging = false;
+        let dragOffsetX, dragOffsetY;
+        let wallColor = '#DFE2E6';
+        let floorColor = '#C4A484';
+        const gridSize = 20;
+        let is3DView = false;
+        
+        const wallColorPicker = document.getElementById('wall-color-picker');
+        const floorColorPicker = document.getElementById('floor-color-picker');
+        const itemColorPicker = document.getElementById('item-color-picker');
+        const selectionControls = document.getElementById('selection-controls');
+        const rotateBtn = document.getElementById('rotate-item');
+        const deleteBtn = document.getElementById('delete-item');
+
+        const textureData = {
+            floors: {
+                wood: {
+                    map: 'https://threejs.org/examples/textures/hardwood2_diffuse.jpg',
+                    roughness: 'https://threejs.org/examples/textures/hardwood2_roughness.jpg',
+                    normal: 'https://threejs.org/examples/textures/hardwood2_normal.jpg'
+                },
+                tiles: {
+                    map: 'https://threejs.org/examples/textures/stone_tiles_diffuse.jpg',
+                    roughness: 'https://threejs.org/examples/textures/stone_tiles_roughness.jpg',
+                    normal: 'https://threejs.org/examples/textures/stone_tiles_normal.jpg'
+                },
+                carpet: {
+                    map: 'https://threejs.org/examples/textures/fabric_pattern.jpg',
+                    roughness: 'https://threejs.org/examples/textures/fabric_roughness.jpg'
+                }
+            },
+            walls: {
+                plaster: {
+                    roughness: 'https://threejs.org/examples/textures/brick_roughness.jpg',
+                    normal: 'https://threejs.org/examples/textures/terrain/normal.jpg'
+                },
+                bricks: {
+                    map: 'https://threejs.org/examples/textures/brick_diffuse.jpg',
+                    roughness: 'https://threejs.org/examples/textures/brick_roughness.jpg',
+                    normal: 'https://threejs.org/examples/textures/brick_bump.jpg'
+                },
+                wallpaper: {
+                    map: 'https://threejs.org/examples/textures/disturb.jpg',
+                    roughness: 'https://threejs.org/examples/textures/brick_roughness.jpg'
+                }
+            },
+            furniture: {
+                wood: {
+                    map: 'https://threejs.org/examples/textures/hardwood2_diffuse.jpg',
+                    roughness: 'https://threejs.org/examples/textures/hardwood2_roughness.jpg',
+                    normal: 'https://threejs.org/examples/textures/hardwood2_normal.jpg'
+                },
+                fabric: {
+                     map: 'https://threejs.org/examples/textures/fabric_pattern_02.jpg',
+                     normal: 'https://threejs.org/examples/textures/fabric_normal.jpg',
+                     roughness: 'https://threejs.org/examples/textures/fabric_roughness.jpg'
+                }
+            }
+        };
+        let currentFloorTexture = 'wood';
+        let currentWallTexture = 'plaster';
+
+
+        function resizeCanvas() {
+            const containerWidth = canvasContainer.clientWidth;
+            const containerHeight = canvasContainer.clientHeight;
+            
+            canvas.width = containerWidth;
+            canvas.height = containerHeight;
+            
+            if (is3DView && renderer) {
+                camera.aspect = containerWidth / containerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(containerWidth, containerHeight);
+            }
+            draw();
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += gridSize) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += gridSize) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+        }
+        
+        function drawFurniture() {
+            furniture.forEach(item => {
+                ctx.save();
+                ctx.translate(item.x + item.width / 2, item.y + item.height / 2);
+                ctx.rotate(item.rotation * Math.PI / 180);
+                
+                ctx.fillStyle = item.color;
+                ctx.fillRect(-item.width / 2, -item.height / 2, item.width, item.height);
+                
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-item.width / 2, -item.height / 2, item.width, item.height);
+
+                if (item === selectedItem) {
+                    ctx.strokeStyle = 'rgba(74, 144, 226, 0.9)';
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(-item.width / 2, -item.height / 2, item.width, item.height);
+                }
+                ctx.restore();
+            });
+        }
+
+        function draw() {
+            if (is3DView) return;
+            ctx.fillStyle = floorColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            drawFurniture();
+        }
+        
+        // --- 3D View ---
+        function createFurnitureMesh(item) {
+            const group = new THREE.Group();
+            
+            const woodTexture = textureData.furniture.wood;
+            const fabricTexture = textureData.furniture.fabric;
+
+            const woodMaterial = new THREE.MeshStandardMaterial({
+                color: item.color,
+                map: textureLoader.load(woodTexture.map),
+                normalMap: textureLoader.load(woodTexture.normal),
+                roughnessMap: textureLoader.load(woodTexture.roughness)
+            });
+             [woodMaterial.map, woodMaterial.normalMap, woodMaterial.roughnessMap].forEach(map => {
+                if (map) {
+                    map.wrapS = map.wrapT = THREE.RepeatWrapping;
+                }
+            });
+
+            const fabricMaterial = new THREE.MeshStandardMaterial({
+                color: item.color,
+                map: textureLoader.load(fabricTexture.map),
+                normalMap: textureLoader.load(fabricTexture.normal),
+                roughnessMap: textureLoader.load(fabricTexture.roughness)
+            });
+             [fabricMaterial.map, fabricMaterial.normalMap, fabricMaterial.roughnessMap].forEach(map => {
+                if(map) {
+                    map.wrapS = map.wrapT = THREE.RepeatWrapping;
+                    map.repeat.set(item.width / 100, item.height / 100);
+                }
+            });
+
+
+            const metalMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.2, metalness: 0.9 });
+
+            switch(item.type) {
+                case 'sofa': {
+                    const base = new THREE.Mesh(new THREE.BoxGeometry(item.width, 25, item.height), fabricMaterial);
+                    base.position.y = 12.5 + 10;
+                    group.add(base);
+
+                    const back = new THREE.Mesh(new THREE.BoxGeometry(item.width, 30, 15), fabricMaterial);
+                    back.position.set(0, 25 + 15, -item.height / 2 + 7.5);
+                    group.add(back);
+
+                    const legHeight = 10;
+                    const legGeo = new THREE.CylinderGeometry(2, 2, legHeight, 8);
+                    const legPositions = [
+                        [item.width/2 - 5, item.height/2 - 5], [-item.width/2 + 5, item.height/2 - 5],
+                        [item.width/2 - 5, -item.height/2 + 5], [-item.width/2 + 5, -item.height/2 + 5]
+                    ];
+                    legPositions.forEach(p => {
+                        const leg = new THREE.Mesh(legGeo, metalMaterial);
+                        leg.position.set(p[0], legHeight/2, p[1]);
+                        group.add(leg);
+                    });
+                    break;
+                }
+                case 'table': {
+                    const top = new THREE.Mesh(new THREE.BoxGeometry(item.width, 4, item.height), woodMaterial);
+                    top.position.y = 40;
+                    group.add(top);
+                    
+                    const legHeight = 38;
+                    const legGeo = new THREE.BoxGeometry(4, legHeight, 4);
+                    const legPositions = [
+                        [-item.width/2 + 4, -item.height/2 + 4], [item.width/2 - 4, -item.height/2 + 4],
+                        [-item.width/2 + 4, item.height/2 - 4], [item.width/2 - 4, item.height/2 - 4]
+                    ];
+                    legPositions.forEach(p => {
+                        const leg = new THREE.Mesh(legGeo, metalMaterial);
+                        leg.position.set(p[0], legHeight/2, p[1]);
+                        group.add(leg);
+                    });
+                    break;
+                }
+                case 'bed': {
+                     const mattressMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, map: textureLoader.load(fabricTexture.map) });
+                     const base = new THREE.Mesh(new THREE.BoxGeometry(item.width, 20, item.height), woodMaterial);
+                     base.position.y = 10;
+                     group.add(base);
+                     const mattress = new THREE.Mesh(new THREE.BoxGeometry(item.width, 18, item.height), mattressMaterial);
+                     mattress.position.y = 29;
+                     group.add(mattress);
+                     break;
+                }
+                case 'chair': {
+                    const seatGeo = new THREE.CylinderGeometry(item.width/2, item.width/2, 4, 32);
+                    const seat = new THREE.Mesh(seatGeo, woodMaterial);
+                    seat.position.y = 42;
+                    group.add(seat);
+
+                    const legHeight = 40;
+                    const legGeo = new THREE.CylinderGeometry(1.5, 1, legHeight, 8);
+                    for (let i = 0; i < 4; i++) {
+                        const angle = (i/4) * Math.PI * 2 + Math.PI/4;
+                        const leg = new THREE.Mesh(legGeo, metalMaterial);
+                        leg.position.set(Math.cos(angle) * item.width/3, legHeight/2, Math.sin(angle) * item.width/3);
+                        leg.rotation.z = 0.2;
+                        if(i%2 === 1) leg.rotation.x = -0.2;
+                        group.add(leg);
+                    }
+                    break;
+                }
+                case 'bookshelf': {
+                    const shelfHeight = 180;
+                    const shelfDepth = item.height;
+                    const frameGeo = new THREE.BoxGeometry(2, shelfHeight, 2);
+                    const framePositions = [
+                        [-item.width/2 + 1, -shelfDepth/2 + 1], [item.width/2 - 1, -shelfDepth/2 + 1],
+                        [-item.width/2 + 1, shelfDepth/2 - 1], [item.width/2 - 1, shelfDepth/2 - 1]
+                    ];
+                    framePositions.forEach(p => {
+                        const frame = new THREE.Mesh(frameGeo, metalMaterial);
+                        frame.position.set(p[0], shelfHeight/2, p[1]);
+                        group.add(frame);
+                    });
+                     for(let i = 0; i < 5; i++){
+                        const shelf = new THREE.Mesh(new THREE.BoxGeometry(item.width, 2, shelfDepth), woodMaterial);
+                        shelf.position.y = (i * shelfHeight/4) + 1;
+                        group.add(shelf);
+                    }
+                    break;
+                }
+                case 'lamp': {
+                    const base = new THREE.Mesh(new THREE.CylinderGeometry(15, 12, 4, 32), metalMaterial);
+                    base.position.y = 2;
+                    group.add(base);
+                    const stem = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 150, 8), metalMaterial);
+                    stem.position.y = 75 + 4;
+                    group.add(stem);
+                    const shadeMaterial = new THREE.MeshStandardMaterial({ color: 0xfff8dc, roughness: 0.5 });
+                    const shade = new THREE.Mesh(new THREE.CylinderGeometry(10, 15, 20, 32, 1, true), shadeMaterial);
+                    shade.position.y = 150;
+                    group.add(shade);
+                    const bulbMaterial = new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0xffffaa, emissiveIntensity: 1});
+                    const bulb = new THREE.Mesh(new THREE.SphereGeometry(4, 16, 8), bulbMaterial);
+                    bulb.position.y = 148;
+                    group.add(bulb);
+                    const lampLight = new THREE.PointLight(0xfff8dc, 0.8, 250, 2);
+                    lampLight.position.y = 148;
+                    lampLight.castShadow = true;
+                    group.add(lampLight);
+                    break;
+                }
+                case 'rug': {
+                     const rugMaterial = new THREE.MeshStandardMaterial({
+                        color: item.color,
+                        map: textureLoader.load('https://threejs.org/examples/textures/fabric_pattern_02.jpg'),
+                        roughness: 0.9,
+                        metalness: 0
+                    });
+                     rugMaterial.map.wrapS = rugMaterial.map.wrapT = THREE.RepeatWrapping;
+                     rugMaterial.map.repeat.set(5,5);
+                    const rug = new THREE.Mesh(new THREE.BoxGeometry(item.width, 1, item.height), rugMaterial);
+                    rug.position.y = 0.5;
+                    group.add(rug);
+                    break;
+                }
+                case 'plant': {
+                    const potMaterial = new THREE.MeshStandardMaterial({ color: 0xFAFAFA, roughness: 0.7 });
+                    const pot = new THREE.Mesh(new THREE.CylinderGeometry(item.width/2, item.width/2, item.height, 32), potMaterial);
+                    pot.position.y = item.height/2;
+                    group.add(pot);
+                    const foliageMaterial = new THREE.MeshStandardMaterial({ color: item.color, roughness: 0.8 });
+                    for (let i = 0; i < 15; i++) {
+                        const leafGeo = new THREE.CircleGeometry(THREE.MathUtils.randFloat(8, 15), 8);
+                        const leaf = new THREE.Mesh(leafGeo, foliageMaterial);
+                        leaf.position.set(
+                            THREE.MathUtils.randFloatSpread(item.width * 0.7),
+                            THREE.MathUtils.randFloat(item.height, item.height * 1.8),
+                            THREE.MathUtils.randFloatSpread(item.height * 0.7)
+                        );
+                        leaf.rotation.x = -Math.PI/2 + THREE.MathUtils.randFloatSpread(0.5);
+                        leaf.rotation.y = THREE.MathUtils.randFloat(0, Math.PI * 2);
+                        group.add(leaf);
+                    }
+                    break;
+                }
+            }
+
+            group.children.forEach(mesh => {
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+            });
+
+            return group;
+        }
+
+        function applyFloorTexture() {
+            if (!roomMeshes.floor) return;
+            const textureInfo = textureData.floors[currentFloorTexture];
+            const material = roomMeshes.floor.material;
+            
+            material.map = textureInfo.map ? textureLoader.load(textureInfo.map) : null;
+            material.roughnessMap = textureInfo.roughness ? textureLoader.load(textureInfo.roughness) : null;
+            material.normalMap = textureInfo.normal ? textureLoader.load(textureInfo.normal) : null;
+            
+            [material.map, material.roughnessMap, material.normalMap].forEach(map => {
+                if (map) {
+                    map.wrapS = map.wrapT = THREE.RepeatWrapping;
+                    map.repeat.set(canvas.width / 150, canvas.height / 150);
+                }
+            });
+            material.needsUpdate = true;
+        }
+
+        function applyWallTexture() {
+            if (!roomMeshes.walls) return;
+            const textureInfo = textureData.walls[currentWallTexture];
+            roomMeshes.walls.forEach(wallMesh => {
+                const material = wallMesh.material;
+                material.map = textureInfo.map ? textureLoader.load(textureInfo.map) : null;
+                material.roughnessMap = textureInfo.roughness ? textureLoader.load(textureInfo.roughness) : null;
+                material.normalMap = textureInfo.normal ? textureLoader.load(textureInfo.normal) : null;
+
+                const maps = [material.map, material.roughnessMap, material.normalMap];
+                maps.forEach(map => {
+                    if (map) {
+                        map.wrapS = map.wrapT = THREE.RepeatWrapping;
+                        // Adjust repeat based on wall orientation
+                        const w = wallMesh.geometry.parameters.width;
+                        const h = wallMesh.geometry.parameters.height;
+                        const d = wallMesh.geometry.parameters.depth;
+                        if(w > d) map.repeat.set(w / 100, h / 100);
+                        else map.repeat.set(d / 100, h / 100);
+                    }
+                });
+                material.needsUpdate = true;
+            });
+        }
+
+
+        function init3D() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xaaaaaa);
+            
+            textureLoader = new THREE.TextureLoader();
+
+            camera = new THREE.PerspectiveCamera(60, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, 2000);
+            camera.position.set(canvas.width * 0.5, 400, canvas.height * 1.2);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            threeContainer.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(canvas.width / 2, 0, canvas.height / 2);
+            controls.enableDamping = true;
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(-300, 500, 300);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            directionalLight.shadow.camera.left = -canvas.width;
+            directionalLight.shadow.camera.right = canvas.width;
+            directionalLight.shadow.camera.top = canvas.height;
+            directionalLight.shadow.camera.bottom = -canvas.height;
+            scene.add(directionalLight);
+
+            const roomHeight = 250;
+            const wallThickness = 15;
+
+            // Floor
+            const floorMaterial = new THREE.MeshStandardMaterial({ color: floorColor });
+            roomMeshes.floor = new THREE.Mesh(new THREE.PlaneGeometry(canvas.width, canvas.height), floorMaterial);
+            roomMeshes.floor.rotation.x = -Math.PI / 2;
+            roomMeshes.floor.position.set(canvas.width / 2, 0, canvas.height / 2);
+            roomMeshes.floor.receiveShadow = true;
+            scene.add(roomMeshes.floor);
+            applyFloorTexture();
+
+            // Walls
+            const wallMaterial = new THREE.MeshStandardMaterial({ color: wallColor, metalness: 0 });
+            const walls = [
+                { size: [canvas.width + wallThickness*2, roomHeight, wallThickness], pos: [canvas.width/2, roomHeight/2, -wallThickness/2] }, // North
+                { size: [canvas.width + wallThickness*2, roomHeight, wallThickness], pos: [canvas.width/2, roomHeight/2, canvas.height + wallThickness/2] }, // South
+                { size: [wallThickness, roomHeight, canvas.height], pos: [-wallThickness/2, roomHeight/2, canvas.height/2] }, // West
+                { size: [wallThickness, roomHeight, canvas.height], pos: [canvas.width + wallThickness/2, roomHeight/2, canvas.height/2] } // East
+            ];
+
+            roomMeshes.walls = [];
+            walls.forEach(w => {
+                const wallMesh = new THREE.Mesh(new THREE.BoxGeometry(...w.size), wallMaterial.clone());
+                wallMesh.position.set(...w.pos);
+                wallMesh.receiveShadow = true;
+                scene.add(wallMesh);
+                roomMeshes.walls.push(wallMesh);
+            });
+            applyWallTexture();
+            
+            update3DScene();
+        }
+
+        function update3DScene() {
+            if (!scene) return;
+            
+            scene.children.filter(obj => obj.userData.isFurniture).forEach(obj => scene.remove(obj));
+
+            furniture.forEach(item => {
+                const meshGroup = createFurnitureMesh(item);
+                meshGroup.userData.isFurniture = true;
+                meshGroup.position.set(item.x + item.width/2, 0, item.y + item.height/2);
+                meshGroup.rotation.y = -item.rotation * Math.PI / 180;
+                scene.add(meshGroup);
+            });
+        }
+        
+        function animate3D() {
+            if (!is3DView) return;
+            requestAnimationFrame(animate3D);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        document.getElementById('toggle-view').addEventListener('click', () => {
+            is3DView = !is3DView;
+            if (is3DView) {
+                document.getElementById('toggle-view').textContent = '2D View';
+                canvas.style.display = 'none';
+                threeContainer.style.display = 'block';
+                if (!scene) init3D();
+                update3DScene();
+                animate3D();
+            } else {
+                document.getElementById('toggle-view').textContent = '3D View';
+                canvas.style.display = 'block';
+                threeContainer.style.display = 'none';
+                draw();
+            }
+            resizeCanvas();
+        });
+
+        const furnitureItems = document.querySelectorAll('.furniture-item');
+        furnitureItems.forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', JSON.stringify(item.dataset));
+            });
+        });
+
+        canvasContainer.addEventListener('dragover', (e) => e.preventDefault());
+
+        canvasContainer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if(is3DView) return;
+            const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            furniture.push({
+                type: data.type,
+                x: Math.round((x - parseInt(data.width)/2) / gridSize) * gridSize,
+                y: Math.round((y - parseInt(data.height)/2) / gridSize) * gridSize,
+                width: parseInt(data.width),
+                height: parseInt(data.height),
+                color: data.color,
+                rotation: 0
+            });
+            draw();
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            let clickedOnItem = false;
+            for (let i = furniture.length - 1; i >= 0; i--) {
+                const item = furniture[i];
+                
+                const localMouseX = mouseX - (item.x + item.width/2);
+                const localMouseY = mouseY - (item.y + item.height/2);
+                const angle = -item.rotation * Math.PI / 180;
+                const rotatedMouseX = localMouseX * Math.cos(angle) - localMouseY * Math.sin(angle);
+                const rotatedMouseY = localMouseX * Math.sin(angle) + localMouseY * Math.cos(angle);
+
+                if (Math.abs(rotatedMouseX) < item.width/2 && Math.abs(rotatedMouseY) < item.height/2) {
+                    selectedItem = item;
+                    isDragging = true;
+                    dragOffsetX = mouseX - item.x;
+                    dragOffsetY = mouseY - item.y;
+                    clickedOnItem = true;
+                    furniture.splice(i, 1);
+                    furniture.push(item);
+                    updateSelectionControls();
+                    break;
+                }
+            }
+
+            if (!clickedOnItem) selectedItem = null;
+            updateSelectionControls();
+            draw();
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging && selectedItem) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                selectedItem.x = Math.round((mouseX - dragOffsetX) / gridSize) * gridSize;
+                selectedItem.y = Math.round((mouseY - dragOffsetY) / gridSize) * gridSize;
+                draw();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => { isDragging = false; });
+        canvas.addEventListener('mouseleave', () => { isDragging = false; });
+
+        function updateSelectionControls(){
+            if(selectedItem) {
+                selectionControls.classList.remove('hidden');
+                itemColorPicker.value = selectedItem.color;
+            } else {
+                 selectionControls.classList.add('hidden');
+            }
+        }
+
+        wallColorPicker.addEventListener('input', (e) => {
+            wallColor = e.target.value;
+            if (scene) {
+                roomMeshes.walls.forEach(w => w.material.color.set(wallColor));
+            }
+            draw();
+        });
+        
+        floorColorPicker.addEventListener('input', (e) => {
+            floorColor = e.target.value;
+            if (scene) roomMeshes.floor.material.color.set(floorColor);
+            draw();
+        });
+        
+        document.getElementById('wall-textures').addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                currentWallTexture = e.target.dataset.texture;
+                document.querySelectorAll('#wall-textures .texture-btn').forEach(btn => btn.classList.remove('selected'));
+                e.target.classList.add('selected');
+                if (is3DView) applyWallTexture();
+            }
+        });
+
+        document.getElementById('floor-textures').addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                currentFloorTexture = e.target.dataset.texture;
+                document.querySelectorAll('#floor-textures .texture-btn').forEach(btn => btn.classList.remove('selected'));
+                e.target.classList.add('selected');
+                if (is3DView) applyFloorTexture();
+            }
+        });
+
+        itemColorPicker.addEventListener('input', (e) => {
+            if (selectedItem) {
+                selectedItem.color = e.target.value;
+                if (is3DView) update3DScene();
+                draw();
+            }
+        });
+
+        rotateBtn.addEventListener('click', () => {
+            if (selectedItem) {
+                selectedItem.rotation = (selectedItem.rotation + 45) % 360;
+                if(is3DView) update3DScene();
+                draw();
+            }
+        });
+        
+        deleteBtn.addEventListener('click', () => {
+            if (selectedItem) {
+                furniture = furniture.filter(item => item !== selectedItem);
+                selectedItem = null;
+                if(is3DView) update3DScene();
+                updateSelectionControls();
+                draw();
+            }
+        });
+
+        function showCustomConfirm(message, callback) {
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop';
+            
+            const content = document.createElement('div');
+            content.className = 'modal-content';
+            content.innerHTML = `
+                <p class="text-lg mb-4">${message}</p>
+                <div class="flex justify-center space-x-4">
+                    <button id="confirm-yes" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg">Yes</button>
+                    <button id="confirm-no" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg">No</button>
+                </div>
+            `;
+            
+            backdrop.appendChild(content);
+            document.body.appendChild(backdrop);
+            
+            document.getElementById('confirm-yes').onclick = () => {
+                callback(true);
+                document.body.removeChild(backdrop);
+            };
+            document.getElementById('confirm-no').onclick = () => {
+                callback(false);
+                document.body.removeChild(backdrop);
+            };
+        }
+
+
+        // Save & Load
+        document.getElementById('save-layout').addEventListener('click', () => {
+            const layout = { furniture, wallColor, floorColor, currentWallTexture, currentFloorTexture };
+            localStorage.setItem('spacecraftLayout', JSON.stringify(layout));
+            const saveBtn = document.getElementById('save-layout');
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = 'Saved!';
+            saveBtn.classList.add('bg-green-700');
+            setTimeout(() => {
+                saveBtn.textContent = originalText;
+                saveBtn.classList.remove('bg-green-700');
+            }, 1500);
+        });
+
+        document.getElementById('load-layout').addEventListener('click', () => {
+            const savedLayout = localStorage.getItem('spacecraftLayout');
+            if (savedLayout) {
+                const layout = JSON.parse(savedLayout);
+                furniture = layout.furniture;
+                wallColor = layout.wallColor;
+                floorColor = layout.floorColor;
+                wallColorPicker.value = wallColor;
+                floorColorPicker.value = floorColor;
+                currentWallTexture = layout.currentWallTexture || 'plaster';
+                currentFloorTexture = layout.currentFloorTexture || 'wood';
+                
+                document.querySelectorAll('#wall-textures .texture-btn').forEach(btn => btn.classList.remove('selected'));
+                document.querySelector(`#wall-textures .texture-btn[data-texture="${currentWallTexture}"]`).classList.add('selected');
+                document.querySelectorAll('#floor-textures .texture-btn').forEach(btn => btn.classList.remove('selected'));
+                document.querySelector(`#floor-textures .texture-btn[data-texture="${currentFloorTexture}"]`).classList.add('selected');
+
+
+                if (is3DView && scene) {
+                    roomMeshes.walls.forEach(w => w.material.color.set(wallColor));
+                    roomMeshes.floor.material.color.set(floorColor);
+                    applyWallTexture();
+                    applyFloorTexture();
+                    update3DScene();
+                }
+                draw();
+            }
+        });
+        
+        document.getElementById('clear-layout').addEventListener('click', () => {
+            showCustomConfirm('Are you sure you want to clear the layout?', (confirmed) => {
+                if (confirmed) {
+                    furniture = [];
+                    selectedItem = null;
+                    if(is3DView) update3DScene();
+                    updateSelectionControls();
+                    draw();
+                }
+            });
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Initial setup
+        wallColorPicker.value = wallColor;
+        floorColorPicker.value = floorColor;
+        resizeCanvas();
+    </script>
+
+</body>
+</html>
+
