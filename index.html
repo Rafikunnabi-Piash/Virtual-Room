@@ -299,6 +299,7 @@
              [woodMaterial.map, woodMaterial.normalMap, woodMaterial.roughnessMap].forEach(map => {
                 if (map) {
                     map.wrapS = map.wrapT = THREE.RepeatWrapping;
+                    map.repeat.set(item.width / 50, item.height / 50);
                 }
             });
 
@@ -311,7 +312,7 @@
              [fabricMaterial.map, fabricMaterial.normalMap, fabricMaterial.roughnessMap].forEach(map => {
                 if(map) {
                     map.wrapS = map.wrapT = THREE.RepeatWrapping;
-                    map.repeat.set(item.width / 100, item.height / 100);
+                    map.repeat.set(item.width / 25, item.height / 25);
                 }
             });
 
@@ -361,6 +362,10 @@
                 }
                 case 'bed': {
                      const mattressMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, map: textureLoader.load(fabricTexture.map) });
+                     if (mattressMaterial.map) {
+                         mattressMaterial.map.wrapS = mattressMaterial.map.wrapT = THREE.RepeatWrapping;
+                         mattressMaterial.map.repeat.set(item.width / 25, item.height / 25);
+                     }
                      const base = new THREE.Mesh(new THREE.BoxGeometry(item.width, 20, item.height), woodMaterial);
                      base.position.y = 10;
                      group.add(base);
